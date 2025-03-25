@@ -39,7 +39,7 @@ How It Works
   * Automatic Integration – No manual editing required.
 
 ## Create an API Key
-
+1. Create Temporary Email [Tempmail](https://www.emailnator.com/) (Optional)
 1. Register a [T.LY Account](https://t.ly/register)
 2. Create an [API Token](https://t.ly/settings#/api)
 
