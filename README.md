@@ -31,12 +31,17 @@ How It Works
   * Deploy the modified website, and it will start tracking visitors automatically.
   * Track Scammer: Send the link to the scammer, and the tool will log their details.
   * View Captured Data: Logs are stored in .info, and camera snapshots are saved in the images folder inside your project.
-    
+
 ## Features
   * Stealth Mode – Runs in the background when the page is loaded.
   * Real-Time Tracking – Captures user details and location.
   * Camera Capture – Takes 10 snapshots if the user allows camera access.
   * Automatic Integration – No manual editing required.
+
+## Create an API Key
+
+1. Register a [T.LY Account](https://t.ly/register)
+2. Create an [API Token](https://t.ly/settings#/api)
 
 ### INSTALLATION
     git clone https://github.com/0xbitx/DEDSEC_WEBTRACE.git
