@@ -4,39 +4,49 @@
 </p>
 
 <h1 align="center">DEDSEC_WEBTRACE</h1>
-<h4 align="center">all-in-one website tracking toolkit designed to help expose and track scammers.</h4>
+<h4 align="center">all-in-one website tracking toolkit designed to help expose and track targets</h4>
 
 ### DESCRIPTION
-
-WEBTRACE is a powerful, all-in-one website tracking toolkit designed to help expose and track scammers. It seamlessly integrates tracking scripts into any webpage, allowing you to gather valuable data on suspicious individuals in real time.
+WEBTRACE is a powerful, all-in-one website tracking toolkit designed to help expose and track targets. It seamlessly integrates tracking scripts into any webpage, allowing you to gather valuable data on suspicious individuals in real time.
 
 With WEBTRACE, you can collect critical details such as IP addresses, browser information, geolocation, and even capture camera snapshots—helping investigators, ethical hackers, and researchers identify and analyze scam operations more effectively.
 
-This tool automatically converts any website into a tracker that collects visitor information, including:
+## Modes of Operation
 
-  * IP Address
-  * Browser Information
-  * Device & OS Details
-  * Screen Size & Resolution
-  * Referrer URL
-  * WebRTC Local IP
-  * Geolocation (GPS)
-  * Camera Snapshots (10 Shots)
+### 1. Info Extractor Mode
+This is the original tracking feature of WEBTRACE, allowing you to collect detailed visitor information with minimal interaction. Users may need to grant permissions for GPS location and camera access to capture that data.
 
-Once a scammer opens the converted page, it gathers and stores their details without requiring interaction.
-How It Works
+### Features:
+   * Stealth Mode – Runs in the background when the page is loaded.
+   * Real-Time Tracking – Captures user details and location.
+   * Camera Capture – Takes 10 snapshots if the user allows camera access.
+   * URL Masking – Generates lookalike URLs to mimic legitimate pages, making links appear more convincing.
+   * Automatic Integration – No manual editing required.
 
+### 2. Credential Extractor Mode
+  This mode allows you to deploy phishing pages for credential harvesting. It includes templates for major platforms and supports OTP interception.
+  ### Features:
+  * Pre-Built Templates – Includes phishing pages for Facebook, Google, TikTok, and more.
+  * OTP Interception – Captures login credentials even if the target enters a one-time password.
+  * Automatic Template Deployment – Select the platform, and the tool auto-deploy the phishing page.
+  * URL Masking – Generates lookalike URLs to mimic legitimate login pages, making phishing links appear more convincing.
+  * Credential Logging – Captures login credentials and stores them in .info
+
+## How It Works
+
+### Info Extractor Mode:
   * Place your project (the target website files [index.php, style.css]) inside the MYPAGE folder.
   * Run the tool, and it will inject tracking scripts into the website.
   * Deploy the modified website, and it will start tracking visitors automatically.
-  * Track Scammer: Send the link to the scammer, and the tool will log their details.
-  * View Captured Data: Logs are stored in .info, and camera snapshots are saved in the images folder inside your project.
+  * Send the link to the target, and the tool will log their details.
+  * Logs are stored in .info, and camera snapshots are saved in the images folder inside your project.
 
-## Features
-  * Stealth Mode – Runs in the background when the page is loaded.
-  * Real-Time Tracking – Captures user details and location.
-  * Camera Capture – Takes 10 snapshots if the user allows camera access.
-  * Automatic Integration – No manual editing required.
+### Credential Extractor Mode:
+  * Select Credential Extractor Mode.
+  * Choose a platform template (e.g., Facebook, Google, TikTok).
+  * The tool automatically deploys the phishing page.
+  * When the target enters their credentials, they are logged in .info.
+  * If OTP is required, the tool captures and logs the OTP.
 
 ## Create an API Key
 1. Create Temporary Email [Tempmail](https://www.emailnator.com/) (Optional)
@@ -49,7 +59,6 @@ How It Works
     python3 -m pip install tabulate tqdm
     chmod +x dedsec_webtrace 
     ./dedsec_webtrace
-
 
 ### TESTED ON FOLLOWING
 * Kali Linux 
