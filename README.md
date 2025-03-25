@@ -57,6 +57,7 @@ This is the original tracking feature of WEBTRACE, allowing you to collect detai
     git clone https://github.com/0xbitx/DEDSEC_WEBTRACE.git
     cd DEDSEC_WEBTRACE
     python3 -m pip install tabulate tqdm
+    pkg install cloudflared (termux)
     chmod +x dedsec_webtrace 
     ./dedsec_webtrace
 
@@ -64,6 +65,7 @@ This is the original tracking feature of WEBTRACE, allowing you to collect detai
 * Kali Linux 
 * Parrot OS 
 * Ubuntu
+* Termux
   
 ## Legal Disclaimer
 
