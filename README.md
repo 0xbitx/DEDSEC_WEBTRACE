@@ -69,6 +69,3 @@ This is the original tracking feature of WEBTRACE, allowing you to collect detai
 
 This tool is intended for educational and security research purposes only. Unauthorized usage may be illegal in your jurisdiction. The author is not responsible for any misuse of this tool.
 
-## Contributing
-
-Pull requests are welcome! Feel free to improve the tool and submit changes.
