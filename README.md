@@ -56,10 +56,14 @@ This is the original tracking feature of WEBTRACE, allowing you to collect detai
 ### INSTALLATION
     git clone https://github.com/0xbitx/DEDSEC_WEBTRACE.git
     cd DEDSEC_WEBTRACE
-    python3 -m pip install tabulate tqdm
     chmod +x dedsec_webtrace 
-    ./dedsec_webtrace
-
+    ./dedsec-webtrace
+    
+    or
+    
+    sudo apt install ./dedsec-webtrace.deb
+    dedsec-webtrace
+  
 ### TESTED ON FOLLOWING
 * Kali Linux 
 * Parrot OS 
