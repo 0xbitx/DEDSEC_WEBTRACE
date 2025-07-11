@@ -31,6 +31,7 @@ This is the original tracking feature of WEBTRACE, allowing you to collect detai
   * OTP Interception – Captures login credentials even if the target enters a one-time password.
   * Automatic Template Deployment – Select the platform, and the tool auto-deploy the phishing page.
   * URL Masking – Generates lookalike URLs to mimic legitimate login pages, making phishing links appear more convincing.
+  * QR Code Generation – Creates a QR code linking to the page for easy scanning
   * Credential Logging – Captures login credentials and stores them in .info
 
 ## How It Works
