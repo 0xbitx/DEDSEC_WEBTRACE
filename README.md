@@ -21,6 +21,7 @@ This is the original tracking feature of WEBTRACE, allowing you to collect detai
    * Real-Time Tracking – Captures user details and location.
    * Camera Capture – Takes 10 snapshots if the user allows camera access.
    * URL Masking – Generates lookalike URLs to mimic legitimate pages, making links appear more convincing.
+   * QR Code Generation – Creates a QR code linking to the page for easy scanning
    * Automatic Integration – No manual editing required.
 
 ### 2. Credential Extractor Mode
