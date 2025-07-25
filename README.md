@@ -59,7 +59,7 @@ This is the original tracking feature of WEBTRACE, allowing you to collect detai
     git clone https://github.com/0xbitx/DEDSEC_WEBTRACE.git
     pip3 install tqdm tabulate "qrcode[pil]"
     cd DEDSEC_WEBTRACE
-    chmod +x dedsec_webtrace 
+    chmod +x dedsec-webtrace 
     ./dedsec-webtrace
     
     or
